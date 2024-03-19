@@ -479,20 +479,6 @@ public abstract class ImmutableBiMap<K, V> extends ImmutableMap<K, V> implements
       }
     }
 
-    /**
-     * Throws {@link UnsupportedOperationException}. This method is inherited from {@link
-     * ImmutableMap.Builder}, but it does not make sense for bimaps.
-     *
-     * @throws UnsupportedOperationException always
-     * @deprecated This method does not make sense for bimaps and should not be called.
-     * @since 31.1
-     */
-    @DoNotCall
-    @Deprecated
-    @Override
-    public ImmutableBiMap<K, V> buildKeepingLast() {
-      throw new UnsupportedOperationException("Not supported for bimaps");
-    }
 
     @Override
     @VisibleForTesting
