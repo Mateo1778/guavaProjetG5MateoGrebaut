@@ -157,6 +157,21 @@ public abstract class CacheLoader<K, V> {
     return new SupplierToCacheLoader<>(supplier);
   }
 
+  private static final class FunctionToCacheLoader<K, V> extends CacheLoader<K, V>
+      implements Serializable {
+    private final Function<K, V> computingFunction;
+
+    public FunctionToCacheLoader(Function<K, V> computingFunction) {
+      this.computingFunction = checkNotNull(computingFunction);
+    }
+
+    @Override
+    public V load(K key) {
+      return computingFunction.apply(checkNotNull(key));
+    }
+
+    private static final long serialVersionUID = 0;
+  }
 
   /**
    * Returns a {@code CacheLoader} which wraps {@code loader}, executing calls to {@link
@@ -193,7 +208,22 @@ public abstract class CacheLoader<K, V> {
     };
   }
 
-  
+  private static final class SupplierToCacheLoader<V> extends CacheLoader<Object, V>
+      implements Serializable {
+    private final Supplier<V> computingSupplier;
+
+    public SupplierToCacheLoader(Supplier<V> computingSupplier) {
+      this.computingSupplier = checkNotNull(computingSupplier);
+    }
+
+    @Override
+    public V load(Object key) {
+      checkNotNull(key);
+      return computingSupplier.get();
+    }
+
+    private static final long serialVersionUID = 0;
+  }
 
   /**
    * Exception thrown by {@code loadAll()} to indicate that it is not supported.
@@ -216,38 +246,5 @@ public abstract class CacheLoader<K, V> {
     public InvalidCacheLoadException(String message) {
       super(message);
     }
-  }
-  
-  private static final class FunctionToCacheLoader<K, V> extends CacheLoader<K, V>
-      implements Serializable {
-    private final Function<K, V> computingFunction;
-
-    public FunctionToCacheLoader(Function<K, V> computingFunction) {
-      this.computingFunction = checkNotNull(computingFunction);
-    }
-
-    @Override
-    public V load(K key) {
-      return computingFunction.apply(checkNotNull(key));
-    }
-
-    private static final long serialVersionUID = 0;
-  }
-
-  private static final class SupplierToCacheLoader<V> extends CacheLoader<Object, V>
-      implements Serializable {
-    private final Supplier<V> computingSupplier;
-
-    public SupplierToCacheLoader(Supplier<V> computingSupplier) {
-      this.computingSupplier = checkNotNull(computingSupplier);
-    }
-
-    @Override
-    public V load(Object key) {
-      checkNotNull(key);
-      return computingSupplier.get();
-    }
-
-    private static final long serialVersionUID = 0;
   }
 }
