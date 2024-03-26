@@ -174,21 +174,13 @@ public final class Iterators {
 
   /** Returns {@code true} if {@code iterator} contains {@code element}. */
   public static boolean contains(Iterator<?> iterator, @CheckForNull Object element) {
-    if (element == null) {
-      while (iterator.hasNext()) {
-        if (iterator.next() == null) {
-          return true;
+        while (iterator.hasNext()) {
+          if ((element == null && iterator.next() == null) || element.equals(iterator.next())) {
+            return true;
+          }
         }
-      }
-    } else {
-      while (iterator.hasNext()) {
-        if (element.equals(iterator.next())) {
-          return true;
-        }
-      }
+      return false;
     }
-    return false;
-  }
 
   /**
    * Traverses an iterator and removes every element that belongs to the provided collection. The
