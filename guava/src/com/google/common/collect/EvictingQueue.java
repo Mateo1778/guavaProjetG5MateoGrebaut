@@ -104,13 +104,12 @@ public final class EvictingQueue<E> extends ForwardingQueue<E> implements Serial
   @CanIgnoreReturnValue
   public boolean add(E e) {
     checkNotNull(e); // check before removing
-    if (maxSize == 0) {
-      return true;
+    if (maxSize != 0) {
+        if (size() == maxSize) {
+            delegate.remove();
+        }
+        delegate.add(e);
     }
-    if (size() == maxSize) {
-      delegate.remove();
-    }
-    delegate.add(e);
     return true;
   }
 
