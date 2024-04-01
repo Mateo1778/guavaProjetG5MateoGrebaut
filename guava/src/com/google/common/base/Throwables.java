@@ -176,13 +176,12 @@ public final class Throwables {
    * Propagates {@code throwable} exactly as-is, if and only if it is an instance of {@link
    * RuntimeException}, {@link Error}, {@code declaredType1}, or {@code declaredType2}.
    *
-   * <p><b>Discouraged</b> in favor of calling {@link #throwIfInstanceOf} and {@link
-   * #throwIfUnchecked}.
-   *
    * @param throwable the Throwable to possibly propagate
    * @param declaredType1 any checked exception type declared by the calling method
    * @param declaredType2 any other checked exception type declared by the calling method
+   * @deprecated use {@link #throwIfInstanceOf} and {@link #throwIfUnchecked} instead.
    */
+  @Deprecated
   @J2ktIncompatible
   @GwtIncompatible // propagateIfInstanceOf
   public static <X1 extends Throwable, X2 extends Throwable> void propagateIfPossible(
