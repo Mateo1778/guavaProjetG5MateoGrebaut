@@ -1,17 +1,3 @@
-/*
- * Copyright (C) 2013 The Guava Authors
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License. You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software distributed under the License
- * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- * or implied. See the License for the specific language governing permissions and limitations under
- * the License.
- */
-
 package com.google.common.base;
 
 import static com.google.common.base.Preconditions.checkPositionIndexes;
@@ -38,6 +24,18 @@ import com.google.common.annotations.GwtCompatible;
 @GwtCompatible(emulated = true)
 @ElementTypesAreNonnullByDefault
 public final class Utf8 {
+
+  private static final int ASCII_MAX = 0x80;
+  private static final int BYTE_2_MIN = 0xC2;
+  private static final int BYTE_2_MAX = 0xBF;
+  private static final int BYTE_3_MIN = 0xE0;
+  private static final int BYTE_3_MAX = 0xEF;
+  private static final int BYTE_4_MIN = 0xF0;
+  private static final int BYTE_4_MAX = 0xF4;
+  private static final int BYTE_TRAILING_MIN = 0x80;
+  private static final int BYTE_TRAILING_MAX = 0xBF;
+  private static final long UTF8_LENGTH_OVERFLOW = 1L << 32;
+
   /**
    * Returns the number of bytes in the UTF-8-encoded form of {@code sequence}. For a string, this
    * method is equivalent to {@code string.getBytes(UTF_8).length}, but is more efficient in both
@@ -47,21 +45,20 @@ public final class Utf8 {
    *     surrogates)
    */
   public static int encodedLength(CharSequence sequence) {
-    // Warning to maintainers: this implementation is highly optimized.
     int utf16Length = sequence.length();
     int utf8Length = utf16Length;
     int i = 0;
 
     // This loop optimizes for pure ASCII.
-    while (i < utf16Length && sequence.charAt(i) < 0x80) {
+    while (i < utf16Length && sequence.charAt(i) < ASCII_MAX) {
       i++;
     }
 
     // This loop optimizes for chars less than 0x800.
     for (; i < utf16Length; i++) {
       char c = sequence.charAt(i);
-      if (c < 0x800) {
-        utf8Length += ((0x7f - c) >>> 31); // branch free!
+      if (c < ASCII_MAX) {
+        utf8Length += ((ASCII_MAX - c) >>> 31); // branch free!
       } else {
         utf8Length += encodedLengthGeneral(sequence, i);
         break;
@@ -71,7 +68,7 @@ public final class Utf8 {
     if (utf8Length < utf16Length) {
       // Necessary and sufficient condition for overflow because of maximum 3x expansion
       throw new IllegalArgumentException(
-          "UTF-8 length does not fit in int: " + (utf8Length + (1L << 32)));
+          "UTF-8 length does not fit in int: " + (utf8Length + UTF8_LENGTH_OVERFLOW));
     }
     return utf8Length;
   }
@@ -81,11 +78,10 @@ public final class Utf8 {
     int utf8Length = 0;
     for (int i = start; i < utf16Length; i++) {
       char c = sequence.charAt(i);
-      if (c < 0x800) {
-        utf8Length += (0x7f - c) >>> 31; // branch free!
+      if (c < ASCII_MAX) {
+        utf8Length += (ASCII_MAX - c) >>> 31; // branch free!
       } else {
         utf8Length += 2;
-        // jdk7+: if (Character.isSurrogate(c)) {
         if (MIN_SURROGATE <= c && c <= MAX_SURROGATE) {
           // Check that we have a well-formed surrogate pair.
           if (Character.codePointAt(sequence, i) == c) {
@@ -145,29 +141,26 @@ public final class Utf8 {
         }
       } while ((byte1 = bytes[index++]) >= 0);
 
-      if (byte1 < (byte) 0xE0) {
+      if (byte1 < BYTE_2_MIN) {
         // Two-byte form.
         if (index == end) {
           return false;
         }
         // Simultaneously check for illegal trailing-byte in leading position
         // and overlong 2-byte form.
-        if (byte1 < (byte) 0xC2 || bytes[index++] > (byte) 0xBF) {
+        if (byte1 < BYTE_2_MIN || bytes[index++] > BYTE_2_MAX) {
           return false;
         }
-      } else if (byte1 < (byte) 0xF0) {
+      } else if (byte1 < BYTE_3_MIN) {
         // Three-byte form.
         if (index + 1 >= end) {
           return false;
         }
         int byte2 = bytes[index++];
-        if (byte2 > (byte) 0xBF
-            // Overlong? 5 most significant bits must not all be zero.
-            || (byte1 == (byte) 0xE0 && byte2 < (byte) 0xA0)
-            // Check for illegal surrogate codepoints.
+        if (byte2 > BYTE_2_MAX
+            || (byte1 == BYTE_3_MIN && byte2 < (byte) 0xA0)
             || (byte1 == (byte) 0xED && (byte) 0xA0 <= byte2)
-            // Third byte trailing-byte test.
-            || bytes[index++] > (byte) 0xBF) {
+            || bytes[index++] > BYTE_2_MAX) {
           return false;
         }
       } else {
@@ -176,16 +169,10 @@ public final class Utf8 {
           return false;
         }
         int byte2 = bytes[index++];
-        if (byte2 > (byte) 0xBF
-            // Check that 1 <= plane <= 16. Tricky optimized form of:
-            // if (byte1 > (byte) 0xF4
-            //     || byte1 == (byte) 0xF0 && byte2 < (byte) 0x90
-            //     || byte1 == (byte) 0xF4 && byte2 > (byte) 0x8F)
+        if (byte2 > BYTE_2_MAX
             || (((byte1 << 28) + (byte2 - (byte) 0x90)) >> 30) != 0
-            // Third byte trailing-byte test
-            || bytes[index++] > (byte) 0xBF
-            // Fourth byte trailing-byte test
-            || bytes[index++] > (byte) 0xBF) {
+            || bytes[index++] > BYTE_2_MAX
+            || bytes[index++] > BYTE_2_MAX) {
           return false;
         }
       }
