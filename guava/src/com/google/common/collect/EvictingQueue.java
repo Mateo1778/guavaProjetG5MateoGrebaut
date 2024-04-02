@@ -109,7 +109,7 @@ public final class EvictingQueue<E> extends ForwardingQueue<E> implements Serial
             delegate.remove();
         }
         delegate.add(e);
-        return true
+        return true;
     }
     return false;
   }

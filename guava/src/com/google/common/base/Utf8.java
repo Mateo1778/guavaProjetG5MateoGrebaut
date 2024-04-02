@@ -1,4 +1,3 @@
-@@ -1,17 +1,3 @@
 /*
  * Copyright (C) 2013 The Guava Authors
  *
@@ -41,14 +40,10 @@ import com.google.common.annotations.GwtCompatible;
 public final class Utf8 {
 
   private static final int ASCII_MAX = 0x80;
-  private static final int BYTE_2_MIN = 0xC2;
-  private static final int BYTE_2_MAX = 0xBF;
-  private static final int BYTE_3_MIN = 0xE0;
-  private static final int BYTE_3_MAX = 0xEF;
-  private static final int BYTE_4_MIN = 0xF0;
-  private static final int BYTE_4_MAX = 0xF4;
-  private static final int BYTE_TRAILING_MIN = 0x80;
-  private static final int BYTE_TRAILING_MAX = 0xBF;
+
+
+  private static final int LAST_BYTE = 0x7f;
+  private static final int BYTE_TRAILING_MIN = 0x800;
   private static final long UTF8_LENGTH_OVERFLOW = 1L << 32;
 
   /**
@@ -72,8 +67,8 @@ public final class Utf8 {
     // This loop optimizes for chars less than 0x800.
     for (; i < utf16Length; i++) {
       char c = sequence.charAt(i);
-      if (c < ASCII_MAX) {
-        utf8Length += ((ASCII_MAX - c) >>> 31); // branch free!
+      if (c < BYTE_TRAILING_MIN) {
+        utf8Length += ((LAST_BYTE - c) >>> 31); // branch free!
       } else {
         utf8Length += encodedLengthGeneral(sequence, i);
         break;
@@ -93,8 +88,8 @@ public final class Utf8 {
     int utf8Length = 0;
     for (int i = start; i < utf16Length; i++) {
       char c = sequence.charAt(i);
-      if (c < ASCII_MAX) {
-        utf8Length += (ASCII_MAX - c) >>> 31; // branch free!
+      if (c < BYTE_TRAILING_MIN) {
+        utf8Length += (LAST_BYTE - c) >>> 31; // branch free!
       } else {
         utf8Length += 2;
         if (MIN_SURROGATE <= c && c <= MAX_SURROGATE) {
@@ -156,26 +151,29 @@ public final class Utf8 {
         }
       } while ((byte1 = bytes[index++]) >= 0);
 
-      if (byte1 < BYTE_2_MIN) {
+      if (byte1 < (byte) 0xE0) {
         // Two-byte form.
         if (index == end) {
           return false;
         }
         // Simultaneously check for illegal trailing-byte in leading position
         // and overlong 2-byte form.
-        if (byte1 < BYTE_2_MIN || bytes[index++] > BYTE_2_MAX) {
+        if (byte1 < (byte) 0xC2 || bytes[index++] > (byte) 0xBF) {
           return false;
         }
-      } else if (byte1 < BYTE_3_MIN) {
+      } else if (byte1 < (byte) 0xF0) {
         // Three-byte form.
         if (index + 1 >= end) {
           return false;
         }
         int byte2 = bytes[index++];
-        if (byte2 > BYTE_2_MAX
-            || (byte1 == BYTE_3_MIN && byte2 < (byte) 0xA0)
+        if (byte2 > (byte) 0xBF
+            // Overlong? 5 most significant bits must not all be zero.
+            || (byte1 == (byte) 0xE0 && byte2 < (byte) 0xA0)
+            // Check for illegal surrogate codepoints.
             || (byte1 == (byte) 0xED && (byte) 0xA0 <= byte2)
-            || bytes[index++] > BYTE_2_MAX) {
+            // Third byte trailing-byte test.
+            || bytes[index++] > (byte) 0xBF) {
           return false;
         }
       } else {
@@ -184,10 +182,16 @@ public final class Utf8 {
           return false;
         }
         int byte2 = bytes[index++];
-        if (byte2 > BYTE_2_MAX
+        if (byte2 > (byte) 0xBF
+            // Check that 1 <= plane <= 16. Tricky optimized form of:
+            // if (byte1 > (byte) 0xF4
+            //     || byte1 == (byte) 0xF0 && byte2 < (byte) 0x90
+            //     || byte1 == (byte) 0xF4 && byte2 > (byte) 0x8F)
             || (((byte1 << 28) + (byte2 - (byte) 0x90)) >> 30) != 0
-            || bytes[index++] > BYTE_2_MAX
-            || bytes[index++] > BYTE_2_MAX) {
+            // Third byte trailing-byte test
+            || bytes[index++] > (byte) 0xBF
+            // Fourth byte trailing-byte test
+            || bytes[index++] > (byte) 0xBF) {
           return false;
         }
       }
