@@ -27,7 +27,7 @@ import junit.framework.TestCase;
 @GwtIncompatible
 public class DefaultsTest extends TestCase {
   public void testGetDefaultValue() {
-    assertEquals(false, Defaults.defaultValue(boolean.class).booleanValue());
+    assertFalse(Defaults.defaultValue(boolean.class).booleanValue());
     assertEquals('\0', Defaults.defaultValue(char.class).charValue());
     assertEquals(0, Defaults.defaultValue(byte.class).byteValue());
     assertEquals(0, Defaults.defaultValue(short.class).shortValue());
