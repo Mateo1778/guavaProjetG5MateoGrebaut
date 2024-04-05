@@ -50,9 +50,9 @@ final class CollectPreconditions {
     return value;
   }
 
-  static void checkPositive(int value, String name) {
+  static void checkPositive(int value) {
     if (value <= 0) {
-      throw new IllegalArgumentException(name + " must be positive but was: " + value);
+      throw new IllegalArgumentException("occurrences" + " must be positive but was: " + value);
     }
   }
 
